@@ -1,0 +1,8 @@
+pyrogram
+tgcrypto
+setuptools
+apscheduler
+uvloop
+requests
+psutil
+py-cpuinfo
