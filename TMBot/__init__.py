@@ -16,33 +16,34 @@ from pyrogram.raw.functions import Ping
 from .client import app
 from .updater import on_msg, on_draft_cmd, on_message_cmd, on_scheduler
 
-from .config import proxies, scheduler, packages_required
+from .config import tz, proxies, scheduler, packages_required
 
 i = 100
 
-def get_size(bytes, suffix="B"):
-    factor = 1000
+def get_size(b, factor = 1000, suffix="B"):
     for unit in ["", "K", "M", "G", "T", "P"]:
-        if bytes < factor:
-            return f"{bytes:.2f}{unit}{suffix}"
-        bytes /= factor
+        if b < factor:
+            return f"{b:.2f}{unit}{suffix}"
+        b /= factor
 
-@on_scheduler("*/5 * * * *")
-async def check_net_handler(client):
-    attempts = 10
-    for attempt in range(1, attempts + 1):
+async def check_net_handler():
+    url = "https://telegram.org/"
+    i = 0
+    while i < 5:
         try:
             if proxies:
-                response = requests.get("https://telegram.org/", proxies=proxies)
+                response = requests.get(url, timeout=5, proxies=proxies)
             else:
-                response = requests.get("https://telegram.org/")
+                response = requests.get(url, timeout=5)
             if response.status_code == 200:
-                return
+                return True
         except:
-            if attempt < attempts:
-                await asyncio.sleep(5)
-            else:
-                os.execl(sys.executable, sys.executable, "-m", "TMBot")
+            pass
+        i += 1
+        await asyncio.sleep(5)
+    os.execl(sys.executable, sys.executable, "-m", "TMBot")
+
+scheduler.add_job(check_net_handler, CronTrigger.from_crontab("*/5 * * * *", tz))
 
 @on_message_cmd("restart")
 async def restart_handler(_, message):
@@ -63,7 +64,7 @@ async def sysinfo_handler(_, message):
         text += f"**CPU**：`{cpuinfo.get_cpu_info()['arch']} ({cpuinfo.get_cpu_info()['count']}) `\n"
 
     svmem = psutil.virtual_memory()
-    text += f"**内存**：`{get_size(svmem.used)} / {get_size(svmem.total)}`\n"
+    text += f"**内存**：`{get_size(svmem.used, factor = 1024)} / {get_size(svmem.total, 1024)}`\n"
 
     if os.path.exists("/hostfs"):
         with open("/hostfs/proc/mounts", "r") as f:
