@@ -13,6 +13,8 @@ from importlib import import_module
 from pyrogram.handlers.handler import Handler
 from pyrogram.raw.functions import Ping
 
+from apscheduler.triggers.cron import CronTrigger
+
 from .client import app
 from .updater import on_msg, on_draft_cmd, on_message_cmd, on_scheduler
 
