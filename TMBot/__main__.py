@@ -7,7 +7,7 @@ from pathlib import Path
 import logging
 
 logging.basicConfig(level=logging.INFO,
-                    format='%(levelname)s - %(funcName)s - %(message)s')
+                    format='[%(levelname)s] %(funcName)s - %(message)s')
 
 def create_dir(path):
     if not path.exists():
