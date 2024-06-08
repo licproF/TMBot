@@ -1,3 +1,4 @@
+aiohttp
 apscheduler
 cryptg
 telethon
