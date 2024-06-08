@@ -19,7 +19,7 @@ def on_scheduler(cron: str, client):
         return wrapped
     return decorator
 
-def setup_event_handlers(client):
+def event_handler(client):
     config_path = Path(__file__).resolve().parent.parent.parent / 'TMBdata/config/config.json'
     with config_path.open() as f:
         config = json.load(f)

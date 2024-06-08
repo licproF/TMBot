@@ -23,8 +23,8 @@ def start_client():
     async def main():
         async with client:
             logging.info(f'登录成功！在任意对话框发送 {prefix}help 获取帮助~')
-            from utils.utils import setup_event_handlers
-            setup_event_handlers(client)
+            from utils.utils import event_handler
+            event_handler(client)
             await client.run_until_disconnected()
 
     client.loop.run_until_complete(main())

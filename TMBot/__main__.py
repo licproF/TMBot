@@ -47,7 +47,7 @@ sys.path.extend([str(Path(__file__).resolve().parent),
 
 plugConf = []
 
-def read_plugins_info(path):
+def impor_plugin(path):
     plugins = []
     if path.is_dir():
         for file in path.glob('*.py'):
@@ -91,8 +91,8 @@ def load_plugins():
     global plugConf
     sys_plugins_path = Path(__file__).resolve().parent / 'utils/plugins'
     data_plugins_path = Path(__file__).resolve().parent.parent / 'TMBdata/plugins'
-    sys_plugins = read_plugins_info(sys_plugins_path)
-    data_plugins = read_plugins_info(data_plugins_path)
+    sys_plugins = impor_plugin(sys_plugins_path)
+    data_plugins = impor_plugin(data_plugins_path)
     plugConf = sys_plugins + data_plugins
     logging.info("所有插件已加载完成~")
 
