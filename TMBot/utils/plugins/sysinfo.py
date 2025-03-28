@@ -1,10 +1,6 @@
 import os
 import platform
-
-type = 'syscmd'
-command = 'sysinfo'
-shortDescription = '获取系统信息'
-filename = os.path.basename(__file__)
+from TMBot.utils.decorators import command
 
 def format_bytes(b):
     for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
@@ -92,8 +88,13 @@ def get_uptime():
     uptime_minutes = int(uptime_seconds // 60)
     return f'{uptime_years:02}:{uptime_days:02}:{uptime_hours:02}:{uptime_minutes:02}'
 
-async def handle(event):
-    response = f'**TMBot** [🤖](https://github.com/licproF/TMBot) \n❚ `{event.message.message}`\n\n'
+@command(
+    name="sysinfo",
+    description="获取系统信息",
+    help_text=None
+)
+async def handler(event):
+    response = f'**TMBot** 🤖\n❚ `{event.message.message}`\n\n'
     response += "**系统信息**\n"
     uname = platform.uname()
     response += f'**系统：**`{uname.system} {uname.release} {uname.version}`\n'

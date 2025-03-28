@@ -1,106 +1,86 @@
-import sys
-import json
-import subprocess
-import importlib.util
-import importlib.metadata
-from pathlib import Path
+import os
+import asyncio
 import logging
+from pathlib import Path
+from telethon import TelegramClient
+from logging.handlers import RotatingFileHandler
+from TMBot.utils import handlers, plugin_loader, scheduler
+from TMBot.config import setup_config, get_log_config
 
-logging.basicConfig(level=logging.INFO,
-                    format='[%(levelname)s] %(funcName)s - %(message)s')
+BASE_DIR = Path(__file__).parent.parent
+data_dir = BASE_DIR / "TMBdata"
+sessions_dir = data_dir / "sessions"
+plugins_dir = data_dir / "plugins"
 
-def create_dir(path):
-    if not path.exists():
-        path.mkdir(parents=True, exist_ok=True)
+data_dir.mkdir(parents=True, exist_ok=True)
+sessions_dir.mkdir(parents=True, exist_ok=True)
+plugins_dir.mkdir(parents=True, exist_ok=True)
 
-def create_config(file_path, content):
-    if not file_path.exists():
-        file_path.write_text(json.dumps(content, indent=4))
+logger = logging.getLogger(__name__)
 
-def loglevel(level):
-    if level == 'DEBUG':
-        return logging.DEBUG
-    elif level == 'INFO':
-        return logging.INFO
-    elif level == 'ERROR':
-        return logging.ERROR
-    else:
-        return logging.WARNING
+config = setup_config(data_dir)
 
-base_path = Path(__file__).resolve().parent.parent / 'TMBdata'
-for sub_dir in ['config', 'session', 'plugins']:
-    create_dir(base_path / sub_dir)
+def setup_logging(data_dir: Path):
+    log_config = get_log_config(config)
 
-config_path = base_path / 'config/config.json'
+    formatter = logging.Formatter(
+        fmt="%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
 
-create_config(config_path, { "loglevel": "WARNING","prefix": "#" })
+    file_handler = RotatingFileHandler(
+        filename=data_dir / 'TMBot.log',
+        maxBytes=log_config['max_bytes'],
+        backupCount=3,
+        encoding='utf-8'
+    )
+    file_handler.setFormatter(formatter)
 
-with config_path.open() as f:
-    config = json.load(f)
-    level = config.get('loglevel', 'WARNING')
+    console_handler = logging.StreamHandler()
+    console_handler.setFormatter(formatter)
 
-logging.getLogger('apscheduler').setLevel(loglevel(level))
-logging.getLogger('telethon').setLevel(loglevel(level))
+    logging.basicConfig(
+        level=log_config['level'],
+        handlers=[file_handler, console_handler]
+    )
 
-sys.path.extend([str(Path(__file__).resolve().parent),
-                 str(Path(__file__).resolve().parent.parent / 'TMBdata')])
+    telethon_logger = logging.getLogger('telethon')
+    apscheduler_logger = logging.getLogger('apscheduler')
 
-plugConf = []
+    telethon_logger.setLevel(log_config['telethon_level'])
+    apscheduler_logger.setLevel(log_config['apscheduler_level'])
 
-def impor_plugin(path):
-    plugins = []
-    if path.is_dir():
-        for file in path.glob('*.py'):
-            try:
-                spec = importlib.util.spec_from_file_location(file.stem, file)
-                module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(module)
-                plugin_info = {
-                    "filename": file.name,
-                    "type": getattr(module, "type", None),
-                    "command": getattr(module, "command", None),
-                    "shortDescription": getattr(module, "shortDescription", ""),
-                    "longDescription": getattr(module, "longDescription", ""),
-                    "required": getattr(module, "required", []),
-                }
-                if plugin_info["type"] == "cron":
-                    plugin_info["cron"] = getattr(module, "cron", None)
-                if install_requirements(plugin_info["required"]):
-                    plugins.append(plugin_info)
-                    logging.info(f"加载插件：{file.name}")
-                else:
-                    logging.warning(f"依赖安装失败，未加载插件：{file.name}")
-            except Exception as e:
-                logging.error(f"加载插件失败：{file.name}\n{e}")
-    return plugins
 
-def install_requirements(requirements):
-    for package in requirements:
-        try:
-            importlib.metadata.version(package)
-        except importlib.metadata.PackageNotFoundError:
-            try:
-                subprocess.check_call([sys.executable, "-m", "pip", "install", package])
-                logging.info(f"成功安装依赖：{package}")
-            except subprocess.CalledProcessError as e:
-                logging.error(f"安装依赖失败：{package}\n{e}")
-                return False
-    return True
+async def main_async():
+    config = setup_config(data_dir)
+    log_config = get_log_config(config)
 
-def load_plugins():
-    global plugConf
-    sys_plugins_path = Path(__file__).resolve().parent / 'utils/plugins'
-    data_plugins_path = Path(__file__).resolve().parent.parent / 'TMBdata/plugins'
-    sys_plugins = impor_plugin(sys_plugins_path)
-    data_plugins = impor_plugin(data_plugins_path)
-    plugConf = sys_plugins + data_plugins
-    logging.info("所有插件已加载完成~")
+    client = TelegramClient(
+        session=sessions_dir / "TMBot",
+        api_id=os.getenv('api_id'),
+        api_hash=os.getenv('api_hash')
+    )
+    client.prefix = os.getenv('prefix', '#')
 
-def main():
-    load_plugins()
+    await client.start()
+    owner_id = await client.get_peer_id('me')
+    me = await client.get_me()
+    user = me.username if me.username else me.first_name
+    logger.info(f"hi，{user}！请在任意对话框发送 {client.prefix}help 获取帮助~")
 
-    from utils.client import start_client
-    start_client()
+    handlers.setup_handlers(client, owner_id, client.prefix)
+    plugin_loader.load_plugins(
+        system_plugins=["TMBot.utils.plugins"],
+        user_plugins=[plugins_dir],
+        log_level=log_config['level'],
+        logger=logger,
+        data_dir=data_dir,
+        config=config
+    )
+
+    await scheduler.SchedulerManager(client).start()
+    await client.run_until_disconnected()
 
 if __name__ == "__main__":
-    main()
+    setup_logging(data_dir)
+    asyncio.run(main_async())

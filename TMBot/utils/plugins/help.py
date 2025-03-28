@@ -1,58 +1,42 @@
-import os
-import json
-import aiohttp
-import asyncio
-from pathlib import Path
-from __main__ import plugConf
+from TMBot.utils.decorators import command, schedules, messages, commands
 
-sys = True
-type = 'syscmd'
-command = 'help'
-filename = os.path.basename(__file__)
-shortDescription = '获取帮助'
+@command(
+    name="help",
+    description="显示帮助信息",
+    help_text="使用 `{prefix}help <名称>/<命令>` 查看插件详细信息"
+)
+async def handler(event):
+    prefix = event.client.prefix
+    args = event.text.split()[1:]
 
-def get_prefix():
-    config_path = Path(__file__).resolve().parent.parent.parent.parent / 'TMBdata/config/config.json'
-    with config_path.open() as f:
-        config = json.load(f)
-        return config.get('prefix', '#')
+    letterhead = f'**TMBot** 🤖\n❚ `{event.message.message}`'
 
-prefix = get_prefix()
-longDescription = f'发送 `{prefix}{command} <命令>/<插件名>` 获取插件详细信息。'
-
-async def get_content(url):
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                content = await response.text()
-                return content 
-            else:
-                return '内容获取失败~'
-
-async def handle(event):
-    message = event.message.message
-    cmd = message.split()
-    response = f'**TMBot** 🤖 \n❚ `{message}`\n\n'
-
-    if len(cmd) == 1:
-        sorted_plugins = sorted(sorted(plugConf, key=lambda x: x['filename']), key=lambda p: (p['type'] != 'syscmd', p['type'] != 'cmd', p['type'] != 'msg', p['type'] != 'cron'))
-        for plugin in sorted_plugins:
-            plugin_cmd = plugin.get('command', plugin['filename'])
-            response += f"`{prefix + plugin_cmd if plugin_cmd else plugin['filename']}`：{plugin['shortDescription']}\n"
-        response += f"\n__{longDescription}__"
-    elif len(cmd) >= 2:
-        name = cmd[1]
-        plugin_info = next((p for p in plugConf if ((prefix + p.get('command')) if p.get('command') else '') == name or p.get('filename') == name), None)
-        if plugin_info:
-            if plugin_info['command']:
-                response += f'命令：`{prefix}{plugin_info['command']}`\n'
-            response += f'插件：`{plugin_info['filename']}`\n'
-            response += f'描述：{plugin_info['shortDescription']}\n'
-            if plugin_info['longDescription']:
-                response += f'说明：{plugin_info['longDescription']}\n'
-        elif name == "TMBot":
-            response += await get_content('https://file.pbpz.net/TMBot%20Plugins/README')
+    if not args:
+        response = [
+            f"📋 **命令事件**",
+            *[f"`{prefix}{name}` - {info.description}" for name, info in commands.items()],
+            "\n📩 **消息事件**",
+            *[f"`{name}` - {info.description}" for name, info in messages.items()],
+            "\n🕒 **定时事件**",
+            *[f"`{name}` - {info.description}" for name, info in schedules.items()]
+        ]
+        await event.edit( letterhead + "\n\n" + "\n".join(response))
+    else:
+        query = args[0].removeprefix(prefix)
+        if query in commands:
+            info = commands[query]
+            await event.edit(
+                f"{letterhead}\n\n📋 **命令：**`{prefix}{query}`\n📃 **说明：**{info.help_text.format(prefix=prefix)}"
+            )
+        elif query in schedules:
+            info = schedules[query]
+            await event.edit(
+                f"{letterhead}\n\n⏰ **名称：**{query}\n**Cron：** `{info.cron}`\n📃 **说明：**{info.help_text}"
+            )
+        elif query in messages:
+            info = messages[query]
+            await event.edit(
+                f"{letterhead}\n\n📩 **名称：**{query}\n📃 **说明：**{info.help_text}"
+            )
         else:
-            response += f"未找到插件：`{name}`"
-
-    await event.edit(response)
+            await event.edit(f"{letterhead}\n\n未找到: {query}")

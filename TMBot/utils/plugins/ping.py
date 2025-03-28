@@ -1,15 +1,14 @@
 from datetime import datetime
 from telethon import functions
+from TMBot.utils.decorators import command
 
-import os
-
-type = 'syscmd'
-command = 'ping'
-shortDescription = 'Ping'
-filename = os.path.basename(__file__)
-
-async def handle(event):
-    response = f'**TMBot** [🤖](https://github.com/licproF/TMBot) \n❚ `{event.message.message}`\n\n'
+@command(
+    name="ping",
+    description="ping",
+    help_text=None
+)
+async def handler(event):
+    response = f'**TMBot** 🤖\n❚ `{event.message.message}`\n\n'
     msg_start = datetime.now()
     response += "Pong!"
     await event.edit(response)

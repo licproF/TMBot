@@ -1,4 +1,4 @@
-aiohttp
-apscheduler
-cryptg
-telethon
+APScheduler==3.11.0
+croniter==6.0.0
+Telethon==1.39.0
+setuptools

@@ -1,11 +1,14 @@
 import os
 import sys
+from TMBot.utils.decorators import command
 
-type = 'syscmd'
-command = 'restart'
-shortDescription = '重启 bot'
-filename = os.path.basename(__file__)
-
-async def handle(event):
+@command(
+    name="restart",
+    description="重启 bot",
+    help_text=None
+)
+async def handler(event):
     await event.delete()
-    os.execl(sys.executable, sys.executable, '-m', 'TMBot')
+    logger.info("重启中...")
+    args = [sys.executable, "-m", "TMBot"]
+    os.execv(sys.executable, args)
