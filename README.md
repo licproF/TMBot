@@ -11,11 +11,16 @@ docker run -it \
     -v /path/to/TMBdata:/TMBdata \
     -e api_id=1234567 \
     -e api_hash=1a2b3c...8x9y0z \
+    -e prefix=# \
+    -e tz=Asia/Shanghai \
     noreph/tmbot
 ```
-插件目录：`TMBdata/plugins`。  
-配置文件目录：`TMBdata/config`。  
-账号登录数据：`TMBdata/session`。  
-api_id、api_hash 请前往 my.telegram.org 申请。  
+
+说明：
+- `prefix`：命令前缀，可自定义。
+- 插件目录：`TMBdata/plugins`。  
+- 配置文件目录：`TMBdata/config`。  
+- 账号登录数据：`TMBdata/session`。  
+- api_id、api_hash 请前往 my.telegram.org 申请。  
 
 ⚠️⚠️⚠️ 温馨提示：谨慎使用，不对使用后出现任何结果负责，包括但不限于封号、被群组管理员禁言、踢出等等。
